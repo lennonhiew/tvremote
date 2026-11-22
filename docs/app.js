@@ -1,6 +1,6 @@
 // Bump ?v= here and in index.html on every change, or phones keep cached copies.
-import { CONFIG, SHOWS } from "./config.js?v=5";
-import { ICONS } from "./icons.js?v=5";
+import { CONFIG, SHOWS } from "./config.js?v=6";
+import { ICONS } from "./icons.js?v=6";
 
 const $ = (id) => document.getElementById(id);
 const SESSION_KEY = "tv-session";

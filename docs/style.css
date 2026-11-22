@@ -1,7 +1,6 @@
 /* Living room TV — calm cinema, phone first: warm graphite room, one ember accent from the screen's glow.
    Spacing on a 4px grid. Easing and tokens follow unslop by Damir Sokolovsky (@heydamir), CC BY 4.0. */
 @font-face { font-family: "Instrument Sans"; src: url(fonts/instrument-sans.woff2) format("woff2"); font-weight: 400 600; font-display: swap; }
-@font-face { font-family: "Instrument Serif"; src: url(fonts/instrument-serif.woff2) format("woff2"); font-weight: 400; font-display: swap; }
 
 :root {
   color-scheme: dark;
@@ -11,7 +10,6 @@
   --accent: #e9a23b; --on-accent: #1d1406; --bad: #e5484d;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --sans: "Instrument Sans", system-ui, sans-serif;
-  --serif: "Instrument Serif", Georgia, serif;
   --tabs-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
@@ -27,7 +25,7 @@ svg { display: block; flex: none; }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { font-weight: 500; }
 
-.wordmark { font: 400 24px/1 var(--serif); letter-spacing: -0.01em; white-space: nowrap; }
+.wordmark { font: 600 18px/1 var(--sans); letter-spacing: -0.01em; white-space: nowrap; }
 .note { font-size: 13px; line-height: 20px; color: var(--muted); }
 .note:empty { display: none; }
 .center { text-align: center; }
@@ -60,7 +58,7 @@ select { appearance: none; padding-right: 44px; cursor: pointer;
 /* ---------- sign in ---------- */
 .auth { min-height: 100dvh; display: grid; place-items: center; padding: 24px 20px calc(24px + var(--safe-b)); }
 .auth-panel { width: min(400px, 100%); }
-.auth .wordmark { font-size: 40px; margin-bottom: 8px; }
+.auth .wordmark { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 8px; }
 .lede { margin-top: 16px; color: var(--text2); }
 .field { display: grid; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--text2); }
 .auth .btn.wide { margin-top: 24px; }
