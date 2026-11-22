@@ -125,6 +125,9 @@ section { padding: 28px 0; border-bottom: 1px solid var(--line); }
 .stepper { display: flex; align-items: center; gap: 4px; flex: none; }
 .stepper output { min-width: 72px; text-align: center; font-weight: 500; }
 .inline { display: flex; gap: 8px; }
+.inline.episodes { align-items: center; justify-content: space-between; }
+.inline.episodes .note { margin: 0; }
+.setting > select { flex: none; }
 .inline input { flex: 1; }
 
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none;

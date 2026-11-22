@@ -8,7 +8,7 @@
 <title>Living room TV</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -108,13 +108,30 @@
         <div class="setting stack">
           <div>
             <h3>Show</h3>
-            <p class="note">Plays from a random episode each time.</p>
+            <p class="note">Random episodes, never a repeat until every episode has played.</p>
           </div>
           <select id="show"></select>
+          <div class="inline episodes">
+            <p class="note" id="episodes"></p>
+            <button class="btn" id="reset-watched" type="button" hidden>Start a new round</button>
+          </div>
           <div id="custom-show" class="inline" hidden>
             <input id="custom-url" placeholder="Paste a YouTube playlist link">
             <button class="btn" id="custom-save" type="button">Use</button>
           </div>
+        </div>
+
+        <div class="setting">
+          <div>
+            <h3>Subtitles</h3>
+            <p class="note">English and Chinese are YouTube's translation of the Malay captions.</p>
+          </div>
+          <select id="subs">
+            <option value="ms">Malay</option>
+            <option value="en">English</option>
+            <option value="zh-Hans">Chinese</option>
+            <option value="off">Off</option>
+          </select>
         </div>
 
         <form class="setting stack" id="pin-form">
@@ -146,6 +163,6 @@
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script type="module" src="app.js?v=1"></script>
+<script type="module" src="app.js?v=2"></script>
 </body>
 </html>

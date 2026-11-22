@@ -47,6 +47,7 @@ insert into tv_settings (id, data) values (1, jsonb_build_object(
   'minutes', 20,
   'show', jsonb_build_object('id', 'PLdm4JCUOHx8701zpqOlb016MkKs7Gg-2d', 'title', 'Upin & Ipin · Full episodes')
 )) on conflict (id) do nothing;
+update tv_settings set data = data || '{"subs": "ms"}' where id = 1 and not data ? 'subs';   -- Malay subtitles by default
 
 -- ---------- internal helpers (not callable by anon) ----------
 create or replace function tv_sha(t text) returns text language sql immutable
@@ -157,7 +158,7 @@ create or replace function tv_command(p_session text, p_cmd jsonb) returns void 
 set search_path = public, extensions as $$
 begin
   perform tv_auth(p_session);
-  if not (p_cmd->>'type' in ('open_app', 'volume', 'key', 'lock_start', 'lock_end')) then
+  if not (p_cmd->>'type' in ('open_app', 'volume', 'key', 'lock_start', 'lock_end', 'reset_watched')) then
     raise exception 'Unknown command';
   end if;
   if (select count(*) from tv_commands) > 50 then raise exception 'Too many queued commands'; end if;
@@ -179,6 +180,10 @@ begin
     if coalesce(p_patch->'show'->>'id', '') !~ '^[A-Za-z0-9_-]{10,64}$' then raise exception 'Not a YouTube playlist'; end if;
     clean := clean || jsonb_build_object('show', jsonb_build_object(
       'id', p_patch->'show'->>'id', 'title', left(coalesce(p_patch->'show'->>'title', 'Playlist'), 80)));
+  end if;
+  if p_patch ? 'subs' then
+    if not (p_patch->>'subs' in ('off', 'ms', 'en', 'zh-Hans')) then raise exception 'Unknown subtitle language'; end if;
+    clean := clean || jsonb_build_object('subs', p_patch->>'subs');
   end if;
   if p_patch ? 'pin_hash' then
     if coalesce(p_patch->>'pin_hash', '') !~ '^[0-9a-f]{64}$' then raise exception 'Bad PIN'; end if;
