@@ -1,9 +1,12 @@
-import { CONFIG, SHOWS } from "./config.js";
-import { ICONS } from "./icons.js";
+// Bump ?v= here and in index.html on every change, or phones keep cached copies.
+import { CONFIG, SHOWS } from "./config.js?v=5";
+import { ICONS } from "./icons.js?v=5";
 
 const $ = (id) => document.getElementById(id);
 const SESSION_KEY = "tv-session";
+const TAB_KEY = "tv-tab";
 const ONLINE_MS = 45_000;
+const TABS = ["tv", "apps", "usage", "settings"];
 let session = localStorage.getItem(SESSION_KEY);
 let state = null;
 let selectedDay = null;
@@ -64,14 +67,16 @@ function ago(iso) {
   if (h < 24) return `${h} h ago`;
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
-function dayLabel(day, i) {
-  if (i === 0 && day === localDay(0)) return "Today";
-  if (day === localDay(-1)) return "Yesterday";
-  return new Date(day + "T12:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
-}
 function localDay(offset) {
-  const d = new Date(Date.now() + offset * 86400000);
-  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+  return new Date(Date.now() + offset * 86400000).toLocaleDateString("en-CA"); // YYYY-MM-DD
+}
+function dayName(day) {
+  if (day === localDay(0)) return "Today";
+  if (day === localDay(-1)) return "Yesterday";
+  return new Date(day + "T12:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 async function sha256(text) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -84,6 +89,24 @@ function signedOut(err) {
   showAuth();
   return true;
 }
+
+// ---------- tabs ----------
+function showTab(name) {
+  if (!TABS.includes(name)) name = "tv";
+  TABS.forEach((t) => {
+    $(`view-${t}`).hidden = t !== name;
+    $(`tab-${t}`).setAttribute("aria-selected", String(t === name));
+  });
+  try { localStorage.setItem(TAB_KEY, name); } catch {}
+  window.scrollTo(0, 0);
+}
+document.querySelector(".tabs").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-tab]");
+  if (b) showTab(b.dataset.tab);
+});
+let startTab = "tv";
+try { startTab = localStorage.getItem(TAB_KEY) || "tv"; } catch {}
+showTab(startTab);
 
 // ---------- auth ----------
 async function showAuth() {
@@ -123,7 +146,7 @@ $("login-form").addEventListener("submit", async (ev) => {
 $("setup-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   $("auth-error").textContent = "";
-  if ($("setup-pw").value !== $("setup-pw2").value) { $("auth-error").textContent = "The two passwords don't match."; return; }
+  if ($("setup-pw").value !== $("setup-pw2").value) { $("auth-error").textContent = "The two passwords don't match"; return; }
   try {
     const r = await rpc("tv_setup", { p_code: $("setup-code").value.trim(), p_password: $("setup-pw").value });
     if (!r.ok) { $("auth-error").textContent = r.error; return; }
@@ -163,102 +186,131 @@ function online() {
 function render() {
   const st = state.status || {};
   const on = online();
+  const locked = on && st.locked;
 
   // on-air line
   $("air").classList.toggle("on", on);
-  $("air-text").textContent = on
-    ? (st.locked ? "On · Abbie's time" : st.fg ? `On · ${st.fg}` : "On")
-    : `Off · seen ${ago(state.last_seen)}`;
+  $("air-text").textContent = on ? "On" : `Off · seen ${ago(state.last_seen)}`;
 
-  // Abbie's time
-  const lock = $("lock");
-  const total = st.session_ms || (state.settings?.minutes || 20) * 60000;
-  if (on && st.locked) {
-    const rem = st.remaining_ms ?? total;
-    lock.classList.remove("idle");
-    lock.classList.toggle("paused", !st.playing);
-    $("lock-time").textContent = fmtClock(rem);
-    $("lock-unit").textContent = "left";
-    $("lock-bar").style.width = `${Math.min(100, ((total - rem) / total) * 100)}%`;
-    $("lock-note").textContent = st.playing
-      ? `Playing ${state.settings?.show?.title || "the show"}. TV unlocks when the timer ends.`
-      : "Paused or loading. The timer waits until the show plays.";
-    setLockButton("End now", "lock-keyhole-open", { type: "lock_end" }, false);
+  renderScreen(st, on);
+
+  // Abbie's time button
+  const b = $("lock-btn");
+  const minutes = state.settings?.minutes || 20;
+  if (locked) {
+    b.innerHTML = icon("lock-keyhole-open") + "End Abbie's time now";
+    b.dataset.cmd = JSON.stringify({ type: "lock_end" });
+    b.classList.remove("primary");
+    $("lock-note").textContent = "The TV unlocks by itself when the timer ends";
   } else {
-    lock.classList.add("idle");
-    lock.classList.remove("paused");
-    $("lock-time").textContent = String(state.settings?.minutes || 20);
-    $("lock-unit").textContent = "min each time the TV turns on";
-    $("lock-bar").style.width = "0%";
-    $("lock-note").textContent = on ? "Unlocked. Anyone can use the TV." : "The TV is off. Turn it on with the remote and Abbie's time starts.";
-    setLockButton("Start now", "lock-keyhole", { type: "lock_start" }, true);
+    b.innerHTML = icon("lock-keyhole") + "Start Abbie's time";
+    b.dataset.cmd = JSON.stringify({ type: "lock_start" });
+    b.classList.add("primary");
+    $("lock-note").textContent = `${minutes} min of Upin & Ipin, also every time the TV turns on`;
   }
-  $("lock-btn").disabled = !on;
+  b.hidden = false;
+  b.disabled = !on;
 
   // remote
-  document.querySelectorAll(".remote .btn").forEach((b) => {
-    const isKey = JSON.parse(b.dataset.cmd).type === "key";
-    b.disabled = !on || (isKey && st.locked);
+  document.querySelectorAll(".remote [data-cmd]").forEach((btn) => {
+    const isKey = JSON.parse(btn.dataset.cmd).type === "key";
+    btn.disabled = !on || (isKey && locked);
   });
-  $("volume").textContent = on && st.volume_max
-    ? (st.muted ? "Muted" : `Volume ${st.volume} of ${st.volume_max}`) + (st.locked ? " · Home and Back are off during Abbie's time" : "")
-    : "";
+  const max = st.volume_max || 100;
+  $("volume").textContent = on ? (st.muted ? "Muted" : `Volume ${st.volume ?? "–"}`) : "Volume";
+  $("vol-bar").style.width = on && !st.muted ? `${Math.min(100, ((st.volume || 0) / max) * 100)}%` : "0%";
+  document.querySelector(".vol-btn.mute").classList.toggle("on", !!(on && st.muted));
+  $("remote-note").textContent = !on ? "Turn the TV on with its remote to use these"
+    : locked ? "Home and Back are off during Abbie's time" : "";
 
-  // apps
+  renderApps(on, locked);
+  renderUsage();
+  renderSettings();
+}
+
+function renderScreen(st, on) {
+  const s = $("screen");
+  const total = st.session_ms || (state.settings?.minutes || 20) * 60000;
+  s.classList.toggle("off", !on);
+  s.classList.toggle("lock", on && !!st.locked);
+  s.classList.toggle("paused", on && !!st.locked && !st.playing);
+  if (!on) {
+    $("screen-label").textContent = "TV";
+    $("screen-main").textContent = "Off";
+    $("screen-sub").textContent = `Last seen ${ago(state.last_seen)}`;
+    $("screen-bar").style.width = "0%";
+  } else if (st.locked) {
+    const rem = st.remaining_ms ?? total;
+    $("screen-label").textContent = "Abbie's time";
+    $("screen-main").textContent = fmtClock(rem);
+    $("screen-sub").textContent = st.playing ? (state.settings?.show?.title || "Upin & Ipin") : "Paused, the timer waits";
+    $("screen-bar").style.width = `${Math.min(100, ((total - rem) / total) * 100)}%`;
+  } else {
+    $("screen-label").textContent = "On now";
+    $("screen-main").textContent = st.fg || "Home menu";
+    $("screen-sub").textContent = "Unlocked";
+    $("screen-bar").style.width = "0%";
+  }
+}
+
+function renderApps(on, locked) {
   const apps = state.apps || [];
   const key = JSON.stringify(apps);
   if (key !== appsKey) {
     appsKey = key;
     $("apps").innerHTML = apps.map((a) =>
-      `<button class="btn" type="button" data-pkg="${esc(a.pkg)}"><span>${esc(a.label)}</span>${icon("chevron-right")}</button>`).join("");
+      `<li><button type="button" data-pkg="${esc(a.pkg)}"><span>${esc(a.label)}</span>${icon("chevron-right")}</button></li>`).join("");
   }
-  $("apps").querySelectorAll(".btn").forEach((b) => (b.disabled = !on));
-  $("apps-note").textContent = !apps.length ? "The app list appears once the TV has been on."
-    : on && st.locked ? "Opening an app ends Abbie's time." : "";
-
-  renderUsage();
-  renderSettings();
-}
-
-function setLockButton(label, ic, cmd, primary) {
-  const b = $("lock-btn");
-  b.innerHTML = icon(ic) + label;
-  b.dataset.cmd = JSON.stringify(cmd);
-  b.classList.toggle("primary", primary);
-  b.hidden = false;
-}
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  $("apps").querySelectorAll("button").forEach((btn) => (btn.disabled = !on));
+  $("apps-note").textContent = !apps.length ? "The list appears once the TV has been on"
+    : !on ? "The TV is off" : locked ? "Opening an app ends Abbie's time" : "";
 }
 
 function renderUsage() {
-  const days = state.usage || [];
-  if (!days.length) {
-    $("days").innerHTML = "";
-    $("usage-on").textContent = "0 min";
-    $("usage").innerHTML = `<li class="empty">Nothing yet. Usage shows up after the TV has been on.</li>`;
-    return;
+  const byDay = new Map((state.usage || []).map((d) => [d.day, d]));
+  const week = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = localDay(-i);
+    week.push(byDay.get(day) || { day, screen_ms: 0, apps: {} });
   }
-  if (!selectedDay || !days.some((d) => d.day === selectedDay)) selectedDay = days[0].day;
-  $("days").innerHTML = days.map((d, i) =>
-    `<button type="button" role="tab" data-day="${d.day}" aria-selected="${d.day === selectedDay}">${dayLabel(d.day, i)}</button>`).join("");
-  const day = days.find((d) => d.day === selectedDay);
+  if (!selectedDay || !week.some((d) => d.day === selectedDay)) selectedDay = week[6].day;
+  const peak = Math.max(...week.map((d) => d.screen_ms), 1);
+  $("week").innerHTML = week.map((d) => {
+    const label = d.day === localDay(0) ? "Today" : new Date(d.day + "T12:00").toLocaleDateString(undefined, { weekday: "short" });
+    const h = d.screen_ms ? Math.max(4, (d.screen_ms / peak) * 100) : 0;
+    return `<button type="button" role="tab" data-day="${d.day}" aria-selected="${d.day === selectedDay}" aria-label="${esc(dayName(d.day))}, ${esc(fmtDur(d.screen_ms))}">` +
+      `<span class="col"><i style="height:${h}%"></i></span><span class="lbl">${esc(label)}</span></button>`;
+  }).join("");
+
+  const idx = week.findIndex((d) => d.day === selectedDay);
+  const day = week[idx];
   $("usage-on").textContent = fmtDur(day.screen_ms);
+  const n = dayName(day.day);
+  $("usage-day").textContent = `TV on ${n === "Today" || n === "Yesterday" ? n.toLowerCase() : n}`;
+  const prev = week[idx - 1];
+  if (prev && prev.screen_ms) {           // no comparison against a day with no data
+    const diff = day.screen_ms - prev.screen_ms;
+    const what = idx === 6 ? "yesterday" : "the day before";
+    $("usage-compare").textContent = Math.abs(diff) < 60000 ? `About the same as ${what}`
+      : `${fmtDur(Math.abs(diff))} ${diff > 0 ? "more" : "less"} than ${what}`;
+  } else {
+    $("usage-compare").textContent = "";
+  }
+
   const rows = Object.entries(day.apps || {}).filter(([, ms]) => ms >= 30000).sort((a, b) => b[1] - a[1]);
-  const max = rows[0]?.[1] || 1;
+  const top = rows[0]?.[1] || 1;
   $("usage").innerHTML = rows.length
     ? rows.map(([name, ms]) =>
         `<li class="${name === "Abbie's show" ? "show" : ""}"><span class="name">${esc(name)}</span><span class="dur">${fmtDur(ms)}</span>` +
-        `<span class="track"><i style="width:${Math.max(2, (ms / max) * 100)}%"></i></span></li>`).join("")
-    : `<li class="empty">No app was open for more than a minute.</li>`;
+        `<span class="track"><i style="width:${Math.max(2, (ms / top) * 100)}%"></i></span></li>`).join("")
+    : `<li class="empty">${day.screen_ms ? "No app was open for more than a minute" : "The TV wasn't used this day"}</li>`;
 }
 
 function renderSettings() {
   const s = state.settings || {};
   if (minutesDraft === null) $("minutes").textContent = `${s.minutes || 20} min`;
-  $("pin-note").textContent = s.pin_set ? "Set from this website. Needed on the TV to skip Abbie's time."
-    : "The TV still uses the starting PIN. Set your own.";
+  $("pin-note").textContent = s.pin_set ? "Set from this website. Needed on the TV to skip Abbie's time"
+    : "The TV still uses the starting PIN. Set your own";
   const sel = $("show");
   if (document.activeElement !== sel) {
     const current = s.show?.id;
@@ -273,7 +325,7 @@ function renderSettings() {
   const st = state.status || {};
   $("episodes").textContent = st.episodes_total
     ? `${Math.min(st.episodes_watched || 0, st.episodes_total)} of ${st.episodes_total} episodes played this round`
-    : "Episode count shows after the first episode plays.";
+    : "Episode count shows after the first episode plays";
   $("reset-watched").hidden = !st.episodes_watched;
 }
 
@@ -290,13 +342,13 @@ $("lock-btn").addEventListener("click", (ev) => {
   const cmd = JSON.parse(ev.currentTarget.dataset.cmd);
   send(cmd, cmd.type === "lock_end" ? "Ending Abbie's time" : "Starting Abbie's time");
 });
-document.querySelectorAll(".remote .btn").forEach((b) =>
-  b.addEventListener("click", () => send(JSON.parse(b.dataset.cmd), "Sent")));
+document.querySelectorAll(".remote [data-cmd]").forEach((btn) =>
+  btn.addEventListener("click", () => send(JSON.parse(btn.dataset.cmd), "Sent")));
 $("apps").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-pkg]");
   if (b) send({ type: "open_app", pkg: b.dataset.pkg }, `Opening ${b.textContent}`);
 });
-$("days").addEventListener("click", (ev) => {
+$("week").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-day]");
   if (b) { selectedDay = b.dataset.day; renderUsage(); }
 });
@@ -340,7 +392,6 @@ $("custom-save").addEventListener("click", async () => {
     $("custom-url").value = "";
   }
 });
-
 $("reset-watched").addEventListener("click", () => send({ type: "reset_watched" }, "New round: every episode is back in the shuffle"));
 
 $("pin-form").addEventListener("submit", async (ev) => {
@@ -348,7 +399,7 @@ $("pin-form").addEventListener("submit", async (ev) => {
   const a = $("pin1").value, b = $("pin2").value;
   if (!/^\d{4}$/.test(a)) { toast("The PIN is 4 digits", true); return; }
   if (a !== b) { toast("The two PINs don't match", true); return; }
-  if (await saveSettings({ pin_hash: await sha256("tvmenu-pin:" + a) }, "PIN saved. The TV picks it up in a few seconds.")) {
+  if (await saveSettings({ pin_hash: await sha256("tvmenu-pin:" + a) }, "PIN saved. The TV picks it up in a few seconds")) {
     $("pin1").value = $("pin2").value = "";
   }
 });

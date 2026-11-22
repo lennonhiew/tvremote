@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#161513">
 <meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Living room TV</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -24,7 +26,7 @@
       <button class="btn primary wide" type="submit">Sign in</button>
     </form>
     <form id="setup-form" hidden>
-      <p class="lede">First time here. Turn on the TV: the menu shows a 6-digit setup code at the top.</p>
+      <p class="lede">First time here. Turn on the TV: the menu shows a 6-digit setup code under the clock.</p>
       <label class="field">
         <span>Setup code from the TV</span>
         <input id="setup-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
@@ -43,113 +45,129 @@
   </div>
 </main>
 
-<!-- Dashboard -->
+<!-- App -->
 <div id="app" class="app" hidden>
   <header class="top">
     <h1 class="wordmark">Living room TV</h1>
     <p id="air" class="air"><span class="dot"></span><span id="air-text">Connecting</span></p>
-    <button id="logout" class="icon-btn" type="button" aria-label="Sign out" data-icon="log-out"></button>
   </header>
 
-  <div class="grid">
-    <div class="col">
-      <section class="lock" id="lock">
-        <h2>Abbie's time</h2>
-        <p class="count"><span id="lock-time">&nbsp;</span><small id="lock-unit"></small></p>
-        <div class="bar" aria-hidden="true"><i id="lock-bar"></i></div>
-        <p id="lock-note" class="note"></p>
-        <div class="row">
-          <button id="lock-btn" class="btn primary" type="button" hidden></button>
-        </div>
-      </section>
-
-      <section>
-        <h2>Remote</h2>
-        <div class="remote">
-          <button class="btn" type="button" data-cmd='{"type":"key","key":"home"}' data-icon="house">Home</button>
-          <button class="btn" type="button" data-cmd='{"type":"key","key":"back"}' data-icon="arrow-left">Back</button>
-          <span class="sep" aria-hidden="true"></span>
-          <button class="btn icon" type="button" data-cmd='{"type":"volume","dir":"down"}' data-icon="volume-1" aria-label="Volume down"></button>
-          <button class="btn icon" type="button" data-cmd='{"type":"volume","dir":"mute"}' data-icon="volume-x" aria-label="Mute"></button>
-          <button class="btn icon" type="button" data-cmd='{"type":"volume","dir":"up"}' data-icon="volume-2" aria-label="Volume up"></button>
-        </div>
-        <p id="volume" class="note"></p>
-      </section>
-
-      <section>
-        <h2>Open on TV</h2>
-        <p id="apps-note" class="note"></p>
-        <div id="apps" class="apps"></div>
-      </section>
+  <!-- TV: what's on, Abbie's time, remote -->
+  <section class="view" id="view-tv" aria-labelledby="tab-tv">
+    <div class="screen" id="screen">
+      <div class="screen-glass">
+        <p class="screen-label" id="screen-label">&nbsp;</p>
+        <p class="screen-main" id="screen-main">&nbsp;</p>
+        <p class="screen-sub" id="screen-sub">&nbsp;</p>
+      </div>
+      <div class="screen-bar" aria-hidden="true"><i id="screen-bar"></i></div>
     </div>
 
-    <div class="col">
-      <section>
-        <h2>Usage</h2>
-        <div id="days" class="days" role="tablist"></div>
-        <p class="usage-total"><span id="usage-on">0 min</span> <span class="note">TV on</span></p>
-        <ol id="usage" class="usage"></ol>
-      </section>
-
-      <section>
-        <h2>Settings</h2>
-        <div class="setting">
-          <div>
-            <h3>Abbie watches for</h3>
-            <p class="note">Counts only while the show is playing. Applies right away.</p>
-          </div>
-          <div class="stepper">
-            <button class="icon-btn" type="button" id="min-down" aria-label="Less" data-icon="minus"></button>
-            <output id="minutes">20 min</output>
-            <button class="icon-btn" type="button" id="min-up" aria-label="More" data-icon="plus"></button>
-          </div>
-        </div>
-
-        <div class="setting stack">
-          <div>
-            <h3>Show</h3>
-            <p class="note">Random episodes, never a repeat until every episode has played.</p>
-          </div>
-          <select id="show"></select>
-          <div class="inline episodes">
-            <p class="note" id="episodes"></p>
-            <button class="btn" id="reset-watched" type="button" hidden>Start a new round</button>
-          </div>
-          <div id="custom-show" class="inline" hidden>
-            <input id="custom-url" placeholder="Paste a YouTube playlist link">
-            <button class="btn" id="custom-save" type="button">Use</button>
-          </div>
-        </div>
-
-        <form class="setting stack" id="pin-form">
-          <div>
-            <h3>TV PIN</h3>
-            <p class="note" id="pin-note"></p>
-          </div>
-          <div class="inline">
-            <input id="pin1" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="New PIN" autocomplete="off" required>
-            <input id="pin2" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="Again" autocomplete="off" required>
-            <button class="btn" type="submit">Save</button>
-          </div>
-        </form>
-
-        <form class="setting stack" id="pw-form">
-          <div>
-            <h3>Website password</h3>
-            <p class="note">Changing it signs out your other devices.</p>
-          </div>
-          <div class="inline">
-            <input id="pw-old" type="password" placeholder="Current" autocomplete="current-password" required>
-            <input id="pw-new" type="password" minlength="8" placeholder="New, 8+ characters" autocomplete="new-password" required>
-            <button class="btn" type="submit">Save</button>
-          </div>
-        </form>
-      </section>
+    <div class="block">
+      <button id="lock-btn" class="btn wide" type="button" hidden></button>
+      <p id="lock-note" class="note center"></p>
     </div>
-  </div>
+
+    <div class="remote">
+      <div class="pair">
+        <button class="btn big" type="button" data-cmd='{"type":"key","key":"home"}' data-icon="house">Home</button>
+        <button class="btn big" type="button" data-cmd='{"type":"key","key":"back"}' data-icon="arrow-left">Back</button>
+      </div>
+      <div class="volume">
+        <button class="vol-btn" type="button" data-cmd='{"type":"volume","dir":"down"}' data-icon="minus" aria-label="Volume down"></button>
+        <div class="vol-mid">
+          <span id="volume">Volume</span>
+          <span class="vol-track" aria-hidden="true"><i id="vol-bar"></i></span>
+        </div>
+        <button class="vol-btn" type="button" data-cmd='{"type":"volume","dir":"up"}' data-icon="plus" aria-label="Volume up"></button>
+        <button class="vol-btn mute" type="button" data-cmd='{"type":"volume","dir":"mute"}' data-icon="volume-x" aria-label="Mute"></button>
+      </div>
+      <p id="remote-note" class="note center"></p>
+    </div>
+  </section>
+
+  <!-- Apps -->
+  <section class="view" id="view-apps" aria-labelledby="tab-apps" hidden>
+    <h2 class="view-title">Open on TV</h2>
+    <p id="apps-note" class="note"></p>
+    <ul id="apps" class="list"></ul>
+  </section>
+
+  <!-- Usage -->
+  <section class="view" id="view-usage" aria-labelledby="tab-usage" hidden>
+    <h2 class="view-title">Usage</h2>
+    <p class="usage-total"><span id="usage-on">0 min</span> <span id="usage-day" class="note"></span></p>
+    <p id="usage-compare" class="note"></p>
+    <div id="week" class="week" role="tablist" aria-label="Day"></div>
+    <ol id="usage" class="ranked"></ol>
+  </section>
+
+  <!-- Settings -->
+  <section class="view" id="view-settings" aria-labelledby="tab-settings" hidden>
+    <h2 class="view-title">Settings</h2>
+
+    <h3 class="group-title">Abbie's time</h3>
+    <div class="group">
+      <div class="row">
+        <div class="row-text">
+          <span>Watch time</span>
+          <span class="note">Counts only while the show plays</span>
+        </div>
+        <div class="stepper">
+          <button class="step" type="button" id="min-down" aria-label="5 minutes less" data-icon="minus"></button>
+          <output id="minutes">20 min</output>
+          <button class="step" type="button" id="min-up" aria-label="5 minutes more" data-icon="plus"></button>
+        </div>
+      </div>
+      <div class="row stack">
+        <div class="row-text">
+          <span>Show</span>
+          <span class="note">Random episodes, no repeats until all have played</span>
+        </div>
+        <select id="show" aria-label="Show"></select>
+        <div id="custom-show" class="stack-sm" hidden>
+          <input id="custom-url" placeholder="YouTube playlist link" aria-label="YouTube playlist link">
+          <button class="btn wide" id="custom-save" type="button">Use this playlist</button>
+        </div>
+      </div>
+      <div class="row">
+        <span id="episodes" class="note"></span>
+        <button class="link" id="reset-watched" type="button" hidden>New round</button>
+      </div>
+    </div>
+
+    <h3 class="group-title">TV PIN</h3>
+    <form class="group" id="pin-form">
+      <p class="note pad" id="pin-note"></p>
+      <div class="stack-sm pad">
+        <input id="pin1" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="New PIN" aria-label="New PIN" autocomplete="off" required>
+        <input id="pin2" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="New PIN again" aria-label="New PIN again" autocomplete="off" required>
+        <button class="btn wide" type="submit">Save PIN</button>
+      </div>
+    </form>
+
+    <h3 class="group-title">Website password</h3>
+    <form class="group" id="pw-form">
+      <p class="note pad">Changing it signs out other phones</p>
+      <div class="stack-sm pad">
+        <input id="pw-old" type="password" placeholder="Current password" aria-label="Current password" autocomplete="current-password" required>
+        <input id="pw-new" type="password" minlength="8" placeholder="New password, 8 or more characters" aria-label="New password" autocomplete="new-password" required>
+        <button class="btn wide" type="submit">Save password</button>
+      </div>
+    </form>
+
+    <button id="logout" class="btn wide quiet" type="button" data-icon="log-out">Sign out</button>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-tv" data-tab="tv" data-icon="tv">TV</button>
+    <button role="tab" id="tab-apps" data-tab="apps" data-icon="layout-grid">Apps</button>
+    <button role="tab" id="tab-usage" data-tab="usage" data-icon="chart-column">Usage</button>
+    <button role="tab" id="tab-settings" data-tab="settings" data-icon="settings">Settings</button>
+  </nav>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script type="module" src="app.js?v=4"></script>
+<script type="module" src="app.js?v=5"></script>
 </body>
 </html>
