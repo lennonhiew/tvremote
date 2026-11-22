@@ -270,7 +270,6 @@ function renderSettings() {
     if (sel.dataset.html !== html) { sel.innerHTML = html; sel.dataset.html = html; }
     if (sel.value !== "__custom" || $("custom-show").hidden) sel.value = current || SHOWS[0].id;
   }
-  if (document.activeElement !== $("subs")) $("subs").value = s.subs || "ms";
   const st = state.status || {};
   $("episodes").textContent = st.episodes_total
     ? `${Math.min(st.episodes_watched || 0, st.episodes_total)} of ${st.episodes_total} episodes played this round`
@@ -342,9 +341,6 @@ $("custom-save").addEventListener("click", async () => {
   }
 });
 
-$("subs").addEventListener("change", (ev) => {
-  saveSettings({ subs: ev.target.value }, `Subtitles: ${ev.target.selectedOptions[0].textContent}`);
-});
 $("reset-watched").addEventListener("click", () => send({ type: "reset_watched" }, "New round: every episode is back in the shuffle"));
 
 $("pin-form").addEventListener("submit", async (ev) => {

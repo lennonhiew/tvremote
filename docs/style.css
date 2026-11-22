@@ -84,7 +84,7 @@ section { padding: 28px 0; border-bottom: 1px solid var(--line); }
 
 /* the one bright moment: Abbie's countdown */
 .lock .count { margin: 4px 0 16px; display: flex; align-items: baseline; gap: 10px;
-  font: 400 76px/1 var(--serif); letter-spacing: -0.02em; }
+  font: 400 72px/1 var(--sans); letter-spacing: -0.03em; }
 .lock .count small { font: 500 15px/1 var(--sans); color: var(--text2); letter-spacing: 0; }
 .lock.idle .count { color: var(--text2); }
 .bar { height: 6px; border-radius: 3px; background: var(--raised); overflow: hidden; }
@@ -108,7 +108,7 @@ section { padding: 28px 0; border-bottom: 1px solid var(--line); }
 .days button:hover { background: var(--raised); }
 .days button[aria-selected="true"] { background: var(--raised); border-color: var(--line2); color: var(--text); }
 .usage-total { margin: 16px 0 12px; display: flex; align-items: baseline; gap: 8px; }
-.usage-total #usage-on { font: 400 36px/1 var(--serif); }
+.usage-total #usage-on { font: 500 32px/1 var(--sans); letter-spacing: -0.02em; }
 .usage { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .usage li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 14px; }
 .usage .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
